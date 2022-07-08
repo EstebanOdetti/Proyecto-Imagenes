@@ -1,14 +1,52 @@
+import tkinter
 import math
 import os
 from statistics import mode
+from tkinter.ttk import Progressbar
+import pandas as pd
 import pyttsx3
-import cv2
 import numpy as np
 from imutils.perspective import four_point_transform
 import imutils
 from skimage import filters, metrics
-import time
 from matplotlib import pyplot as plt
+# from keras.models import load_model
+from tkinter import messagebox as MessageBox
+from tkinter import *
+from tkinter import filedialog
+from PIL import Image
+from PIL import ImageTk
+import cv2
+
+ix1, iy1, ix2, iy2 = -1, -1, -1, -1
+led_seleccionado = False
+
+
+def seleccionar_led(imagen):
+    # mouse call
+    def armar_mascara(event, x, y, flags, param):
+        global ix1, iy1, ix2, iy2, mascara_armada, led_seleccionado
+        if event == cv2.EVENT_LBUTTONDOWN:
+            if ix1 == -1 and iy1 == -1:  # primera asignacion
+                ix1, iy1 = x, y
+                led_seleccionado = True
+            else:  # otras reasignaciones
+                ix2 = ix1
+                iy2 = iy1
+                ix1, iy1 = x, y
+                led_seleccionado = True
+
+    if not led_seleccionado:
+        cv2.namedWindow('Seleccionar led')
+        cv2.setMouseCallback('Seleccionar led', armar_mascara)
+        while 1:
+            if ix1 != -1 and iy1 != -1 and ix2 != -1 and iy2 != -1 or cv2.getWindowProperty('Seleccionar led', cv2.WND_PROP_VISIBLE) <1:  # ya armamos la mascara
+                break
+            cv2.imshow('Seleccionar led', imagen)
+            cv2.waitKey(1)
+        cv2.destroyAllWindows()
+
+    return ix1, iy1, ix2, iy2
 
 
 # It's just a text to speech function..
@@ -20,6 +58,56 @@ def saySomething(somethingToSay):
 
     engine.say(somethingToSay)
     engine.runAndWait()
+
+
+def dictado_voz(tipo_led, digitos, habla):
+    quedice = ""
+    if int(tipo_led) == 1 or int(tipo_led) == 2:
+        if len(digitos) == 5:
+            digitos = sorted(digitos, key=lambda x: x[1], reverse=True)
+            sisole = [digitos[2], digitos[3], digitos[4]]
+            sisole = sorted(sisole, key=lambda x: x[0], reverse=False)
+            sistole = str(sisole[0][2]) + str(sisole[1][2]) + str(sisole[2][2])
+            diastol = [digitos[0], digitos[1]]
+            diastol = sorted(diastol, key=lambda x: x[0], reverse=False)
+            diastole = str(diastol[0][2]) + str(diastol[1][2])
+            quedice = "La sistole es " + sistole + " y la diastole es " + diastole
+        else:
+            digitos = sorted(digitos, key=lambda x: x[0], reverse=False)
+            quedice = ""
+            for i in range(len(digitos)):
+                quedice = str(quedice) + str(digitos[i][2])
+
+    if int(tipo_led) == 3:  # balanza verde
+        digitos = sorted(digitos, key=lambda x: x[0], reverse=False)
+        quedice2 = ""
+        for i in range(len(digitos)):
+            quedice2 = str(quedice2) + str(digitos[i][2])
+        if len(digitos) < 5:
+            quedice = "El peso es " + quedice2[0] + "coma" + quedice2[1:] + " kilogramos"
+        else:
+            quedice = "El peso es " + quedice2[0] + quedice2[1] + "coma" + quedice2[2:] + " kilogramos"
+
+    if int(tipo_led) == 4:  # balanza gris
+        digitos = sorted(digitos, key=lambda x: x[0], reverse=False)
+        digitos_dictar = ""
+        for i in range(len(digitos)):
+            digitos_dictar = str(digitos_dictar) + str(digitos[i][2])
+        quedice = "El peso es " + digitos_dictar + " gramos"
+    if habla:
+        saySomething(quedice)
+
+    if int(tipo_led) == 5:  # fuente azul
+        digitos = sorted(digitos, key=lambda x: x[0], reverse=False)
+        quedice2 = ""
+        for i in range(len(digitos)):
+            quedice2 = str(quedice2) + str(digitos[i][2])
+        if len(digitos) == 3:
+            quedice = quedice2[0] + quedice2[1] + "." + quedice2[2:]
+        else:
+            quedice = quedice2
+
+    return quedice
 
 
 def segmentar_imagen_hsv(imagen, h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto):
@@ -36,19 +124,18 @@ def segmentar_imagen_hsv(imagen, h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto)
 def definir_parametros(tipo_display):
     (win_size_sauvola, k_sauvo, tamanio_led, thres_canny_low, thres_canny_high, h_bajo, h_alto, s_bajo,
      s_alto, v_bajo, v_alto, tam_close, delta, min_area, max_area, max_variation, corte_display_filas_i,
-     corte_display_filas_f
-     , corte_display_columnas_i, corte_display_columnas_f,
-     thres_blanco, porcetaje_w_display,
-     porcetaje_h_display,porcetaje_w_digitos,porcetaje_h_digitos) = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0
+     corte_display_filas_f, corte_display_columnas_i, corte_display_columnas_f, thres_blanco, porcetaje_w_display,
+     porcetaje_h_display, porcetaje_w_digitos, porcetaje_h_digitos) = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+                                                                      0, 0, 0, 0, 0, 0, 0, 0
     # parametros segun display
-    if tipo_display == 1:  ##tensiometro citizen
+    if tipo_display == 1:  # tensiometro citizen
         porcetaje_w_display, porcetaje_h_display = 0.2, 0.4
-        porcetaje_w_digitos,porcetaje_h_digitos = 0.2, 0.8
+        porcetaje_w_digitos, porcetaje_h_digitos = 0.2, 0.8
         win_size_sauvola, k_sauvo = 61, 0.2
         tamanio_led = (440, 300)
-        
+
         thres_canny_low, thres_canny_high = 50, 255
-        #h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 0, 179, 0, 106, 50, 110
+        # h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 0, 179, 0, 106, 50, 110
         h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 0, 179, 10, 110, 50, 110
         # h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 50, 122, 0, 255, 0, 110
         tam_close = 10
@@ -58,10 +145,10 @@ def definir_parametros(tipo_display):
         corte_display_filas_f = 440 - 10
         corte_display_columnas_f = -1
         thres_blanco = 150
-    if tipo_display == 2:  ##tensiometro gama
+    if tipo_display == 2:  # tensiometro gama
         porcetaje_w_display, porcetaje_h_display = 0.2, 0.3
         porcetaje_w_digitos, porcetaje_h_digitos = 0.1, 0.8
-        win_size_sauvola, k_sauvo = 61, 0.2
+        win_size_sauvola, k_sauvo = 31, 0.2
         tamanio_led = (360, 340)
         thres_canny_low, thres_canny_high = 50, 255
         # h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 0, 179, 0, 106, 50, 110
@@ -74,14 +161,14 @@ def definir_parametros(tipo_display):
         corte_display_columnas_f = -1
         thres_blanco = 150
 
-    if tipo_display == 3:  ##balanza systel brumer
+    if tipo_display == 3:  # balanza systel brumer
 
         porcetaje_w_display, porcetaje_h_display = 0.2, 0.4
         porcetaje_w_digitos, porcetaje_h_digitos = 0.2, 0.8
-        win_size_sauvola, k_sauvo = 11, 0.2
+        win_size_sauvola, k_sauvo = 61, 0.1
         tamanio_led = (220, 150)
         thres_canny_low, thres_canny_high = 0, 255
-        #h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 0, 130, 0, 100, 200, 255
+        # h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 0, 130, 0, 100, 200, 255
         h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 20, 70, 0, 100, 200, 255
         tam_close = 5
         delta, min_area, max_area, max_variation = 5, 60, 10000, 0.25
@@ -91,10 +178,10 @@ def definir_parametros(tipo_display):
         corte_display_columnas_f = -1
         thres_blanco = 150
 
-    if tipo_display == 4:  ##balanza display gris
+    if tipo_display == 4:  # balanza display gris
         porcetaje_w_display, porcetaje_h_display = 0.2, 0.4
         porcetaje_w_digitos, porcetaje_h_digitos = 0.2, 0.9
-        win_size_sauvola, k_sauvo = 61, 0.1
+        win_size_sauvola, k_sauvo = 31, 0.3
         tamanio_led = (420, 200)
         thres_canny_low, thres_canny_high = 50, 255
         h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 20, 100, 20, 100, 60, 150
@@ -106,13 +193,13 @@ def definir_parametros(tipo_display):
         corte_display_columnas_f = -1
         thres_blanco = 150
 
-    if tipo_display == 5:  ##display azul
+    if tipo_display == 5:  # display azul
         porcetaje_w_display, porcetaje_h_display = 0.2, 0.4
         porcetaje_w_digitos, porcetaje_h_digitos = 0.2, 0.9
         win_size_sauvola, k_sauvo = 61, 0.1
         tamanio_led = (420, 200)
         thres_canny_low, thres_canny_high = 50, 255
-        h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 90, 115, 110, 255, 170, 255
+        h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 90, 115, 40, 255, 170, 255
         tam_close = 5
         delta, min_area, max_area, max_variation = 5, 2000, 8000, 0.25
         corte_display_filas_i = 5
@@ -120,26 +207,25 @@ def definir_parametros(tipo_display):
         corte_display_filas_f = -1
         corte_display_columnas_f = -1
         thres_blanco = 150
-    if tipo_display == 6:  ##display rojo
+    if tipo_display == 6:  # display rojo
         porcetaje_w_display, porcetaje_h_display = 0.2, 0.4
         porcetaje_w_digitos, porcetaje_h_digitos = 0.2, 0.8
         win_size_sauvola, k_sauvo = 61, 0.1
-        tamanio_led = (420, 200)
+        tamanio_led = (600, 200)
         thres_canny_low, thres_canny_high = 50, 255
         h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 0, 179, 102, 175, 240, 255
         tam_close = 10
-        delta, min_area, max_area, max_variation = 5, 500, 1500, 0.25
+        delta, min_area, max_area, max_variation = 5, 500, 3000, 0.25
         corte_display_filas_i = 0
         corte_display_columnas_i = 0
         corte_display_filas_f = -1
         corte_display_columnas_f = -1
         thres_blanco = 150
     parametros = (win_size_sauvola, k_sauvo, tamanio_led, thres_canny_low, thres_canny_high, h_bajo, h_alto, s_bajo,
-     s_alto, v_bajo, v_alto, tam_close, delta, min_area, max_area, max_variation, corte_display_filas_i,
-     corte_display_filas_f
-     , corte_display_columnas_i, corte_display_columnas_f,
-     thres_blanco, porcetaje_w_display,
-     porcetaje_h_display,porcetaje_w_digitos,porcetaje_h_digitos)
+                  s_alto, v_bajo, v_alto, tam_close, delta, min_area, max_area, max_variation, corte_display_filas_i,
+                  corte_display_filas_f, corte_display_columnas_i, corte_display_columnas_f,
+                  thres_blanco, porcetaje_w_display,
+                  porcetaje_h_display, porcetaje_w_digitos, porcetaje_h_digitos)
     return parametros
 
 
@@ -148,76 +234,79 @@ def pre_proceso(imagen, h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto, tipo_led
     imagen_resize = imutils.resize(imagen, height=500)
     # pasamos a gris
     imagen_resize_gray = cv2.cvtColor(imagen_resize, cv2.COLOR_BGR2GRAY)
-    #segmentacion
+    # segmentacion
     imagen_segmentada_led, mask = segmentar_imagen_hsv(imagen_resize, h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto)
     # plt.imshow(imagen_segmentada_led,cmap='brg_r')
     # plt.show()
-    plt.imshow(imagen_segmentada_led)
-    plt.show()
-    if int(tipo_led) == 3 or int(tipo_led) == 5 or int(tipo_led) == 6: # aplicamos moprh close para cerrar algunos huecos en caso de que no segmente del todo bien
+    if int(tipo_led) == 3 or int(tipo_led) == 5 or int(
+            tipo_led) == 6:  # aplicamos moprh close para cerrar algunos huecos en caso de que no segmente del todo bien
         kernel_alto = cv2.getStructuringElement(cv2.MORPH_RECT, (6, 6))
         mask_dilatada_alto = cv2.dilate(mask, kernel_alto, iterations=10)
         # plt.imshow(mask_dilatada_alto,cmap='Greys_r')
         # plt.show()
         imagen_segmentada_led = cv2.bitwise_and(mask_dilatada_alto, imagen_resize_gray)
-    else: #si es retroiluminado le aplicamos una morfologia y un bitwise and
+    else:  # si es retroiluminado le aplicamos una morfologia y un bitwise and
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         imagen_segmentada_led = cv2.morphologyEx(imagen_segmentada_led, cv2.MORPH_CLOSE, kernel)
     # plt.imshow(imagen_segmentada_led,cmap='Greys_r')
     # plt.show()
     # retornamos imagen_resize,imagen_segmentada_led,imagen_resize_gray para futuros usos
 
-
     return imagen_resize, imagen_segmentada_led, imagen_resize_gray, mask
 
 
 def aislar_led(imagen_segmentada_led, imagen_resize_gray, imagen_resize, tamanio_led, thres_canny_low, thres_canny_high,
                corte_display_filas_i, corte_display_filas_f, corte_display_columnas_i, corte_display_columnas_f,
-               tipo_led):
+               tipo_led, seleccion_manual):
     # le hacemos un blureado muy pequeño y detectamos borde con canny a la imagen segmentada en gris
     if int(tipo_led) == 3 or int(tipo_led) == 5 or int(tipo_led) == 6:
         imagen_gris_segmentada = imagen_segmentada_led
     else:
         imagen_gris_segmentada = cv2.cvtColor(imagen_segmentada_led, cv2.COLOR_BGR2GRAY)
-    imagen_gris_blurred = cv2.GaussianBlur(imagen_gris_segmentada, (1, 1), 0)
+    # imagen_gris_blurred = cv2.GaussianBlur(imagen_gris_segmentada, (1, 1), 0)
     bordes = cv2.Canny(imagen_gris_segmentada, thres_canny_low, thres_canny_high, 255)
-    #le hago una dilatacion a canny para cerra el area mayor
+    # le hago una dilatacion a canny para cerra el area mayor
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    bordes=cv2.dilate(bordes,kernel)
-    # plt.imshow(bordes,cmap='Greys_r')
-    # plt.show()
-    # Hallamos los contornos  y despues se ordenan segun tamñana descendente
-    contornos, _ = cv2.findContours(bordes.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    contornos = sorted(contornos, key=cv2.contourArea, reverse=True)
-    displayCnt = None
-    # Luego el que tenga 4 puntos es posible que sea el led
-    # Iteramos sobre los contornos
+    bordes = cv2.dilate(bordes, kernel)
+    if seleccion_manual == "n":
+        # plt.imshow(bordes,cmap='Greys_r')
+        # plt.show()
+        # Hallamos los contornos  y despues se ordenan segun tamñana descendente
+        contornos, _ = cv2.findContours(bordes.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        contornos = sorted(contornos, key=cv2.contourArea, reverse=True)
+        displayCnt = None
+        # Luego el que tenga 4 puntos es posible que sea el led
+        # Iteramos sobre los contornos
 
-    for c in contornos:
-        # aproximamos el contorno
-        peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.03 * peri, True)
-        # si tiene 4 vertices encontramos el display
-        if len(approx) == 4:
-            displayCnt = approx
-            break
-    # lo extraemos al display con four_point_transform
-    if displayCnt is None:
-        displayCnt = [[[0, 0]], [[0, 0]], [[0, 0]], [[0, 0]]]
-        displayCnt = np.array(displayCnt)
-    led_gris = four_point_transform(imagen_resize_gray, displayCnt.reshape(4, 2))
-    led = four_point_transform(imagen_resize, displayCnt.reshape(4, 2))
+        for c in contornos:
+            # aproximamos el contorno
+            peri = cv2.arcLength(c, True)
+            approx = cv2.approxPolyDP(c, 0.03 * peri, True)
+            # si tiene 4 vertices encontramos el display
+            if len(approx) == 4:
+                displayCnt = approx
+                break
+        # lo extraemos al display con four_point_transform
+        if displayCnt is None:
+            displayCnt = [[[0, 0]], [[0, 0]], [[0, 0]], [[0, 0]]]
+            displayCnt = np.array(displayCnt)
 
-    # dst_pts=np.array([[0, 0],   [tamanio_led[0], 0],  [tamanio_led[0], tamanio_led[1]], [0, tamanio_led[1]]], dtype=np.float32)
-    # displayCnt = np.array(displayCnt, dtype=np.float32)
-    # print(dst_pts)
-    # print(displayCnt)
-    # M = cv2.getPerspectiveTransform(displayCnt, dst_pts)
-    # led = cv2.warpPerspective(imagen_resize, M, (tamanio_led[0], tamanio_led[1]))
-    # plt.imshow(led)
-    # plt.show()
-    # M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    # led_gris = cv2.warpPerspective(img, M, (200, 50))
+        led_gris = four_point_transform(imagen_resize_gray, displayCnt.reshape(4, 2))
+        led = four_point_transform(imagen_resize, displayCnt.reshape(4, 2))
+    else:
+        x, y, x2, y2 = seleccionar_led(imagen_resize)
+        if y2 > y and x2 > x:
+            led_gris = imagen_resize_gray[y:y2, x:x2]
+            led = imagen_resize[y:y2, x:x2]
+        if y > y2 and x > x2:
+            led_gris = imagen_resize_gray[y2:y, x2:x]
+            led = imagen_resize[y2:y, x2:x]
+        if y > y2 and x2 > x:
+            led_gris = imagen_resize_gray[y:y2, x:x2]
+            led = imagen_resize[y:y2, x:x2]
+        if y2 > y and x > x2:
+            led_gris = imagen_resize_gray[y:y2, x:x2]
+            led = imagen_resize[y:y2, x:x2]
 
     # lo resizeamos para mantener la relacion aspecto que se busca en los digitos (h y w)
     led = cv2.resize(led, tamanio_led)
@@ -226,13 +315,13 @@ def aislar_led(imagen_segmentada_led, imagen_resize_gray, imagen_resize, tamanio
     # confunde al mser
     led = led[corte_display_columnas_i:corte_display_columnas_f, corte_display_filas_i:corte_display_filas_f]
     led_gris = led_gris[corte_display_columnas_i:corte_display_columnas_f, corte_display_filas_i:corte_display_filas_f]
-    #calculamos gamma semiautomatico
+    # calculamos gamma semiautomatico
     mid = 0.5
     mean = np.mean(led_gris)
-    if mean>0:
+    if mean > 0:
         gamma = math.log(mid * 255) / math.log(mean)
     else:
-        gamma=1
+        gamma = 1
     # aplicamos gamma
     led_gris = np.power(led_gris, gamma).clip(0, 255).astype(np.uint8)
     # plt.imshow(led_gris, cmap='Greys_r')
@@ -244,10 +333,11 @@ def aislar_led(imagen_segmentada_led, imagen_resize_gray, imagen_resize, tamanio
     return bordes, led, led_gris
 
 
-def umbralizar_cerrar(led_gris, win_size_sauvola, k_sauvo, thres_blanco, tam_close,tipo_led, h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto,led):
+def umbralizar_cerrar(led_gris, win_size_sauvola, k_sauvo, thres_blanco, tam_close, tipo_led, h_bajo, h_alto, s_bajo,
+                      s_alto, v_bajo, v_alto, led):
     if int(tipo_led) == 3 or int(tipo_led) == 5 or int(tipo_led) == 6:
         _, mask = segmentar_imagen_hsv(led, h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto)
-        imagen_thresh_close,imagen_thresh=mask,mask
+        imagen_thresh_close, imagen_thresh = mask, mask
     else:
         # ubralizamos
         imagen_thresh = filters.threshold_sauvola(led_gris, window_size=win_size_sauvola, k=k_sauvo)
@@ -270,7 +360,8 @@ def umbralizar_cerrar(led_gris, win_size_sauvola, k_sauvo, thres_blanco, tam_clo
     return imagen_thresh_close, imagen_thresh
 
 
-def mser_detector_digitos(imagen_thresh_dilatada, delta, min_area, max_area, max_variation, tamanio_led,porcetaje_w_display, porcetaje_h_display,led):
+def mser_detector_digitos(imagen_thresh_dilatada, delta, min_area, max_area, max_variation, tamanio_led,
+                          porcet_w_display, porcet_h_display, led):
     # #Usamos MSER para detectar texto
     mser = cv2.MSER_create(delta, min_area, max_area, max_variation)
     regions, boxes = mser.detectRegions(imagen_thresh_dilatada)
@@ -282,7 +373,7 @@ def mser_detector_digitos(imagen_thresh_dilatada, delta, min_area, max_area, max
         for box in boxes:
             x, y, w, h = box
             cv2.rectangle(copia_led, (x, y), (x + w, y + h), (255, 0, 0), 2)
-            if tamanio_led[0] * porcetaje_w_display < w and tamanio_led[1] * porcetaje_h_display < h and w*h<min_area:
+            if tamanio_led[0] * porcet_w_display < w and tamanio_led[1] * porcet_h_display < h and w * h < min_area:
                 np.delete(boxes, idex)
                 cv2.rectangle(copia_led1, (x, y), (x + w, y + h), (255, 0, 0), 2)
             idex = idex + 1
@@ -294,7 +385,6 @@ def mser_detector_digitos(imagen_thresh_dilatada, delta, min_area, max_area, max
     else:
         boxes_sort = boxes
         maxw, maxh = 0, 0
-
 
     # plt.imshow(copia_led,cmap='brg_r')
     # plt.show()
@@ -316,7 +406,8 @@ def analizar_segmentos(w, h, roi):
         (1, 1, 1, 1, 1, 1, 1): 8,
         (1, 1, 1, 1, 0, 1, 1): 9
     }
-    if w / h > 0.5:
+    # print(w / h)
+    if w / h > 0.3:
         (dW, dH) = (int(w * 0.25), int(h * 0.15))
         dHC = int(h * 0.05)
         # definimos los 7 segmentos
@@ -346,7 +437,11 @@ def analizar_segmentos(w, h, roi):
     return digito
 
 
-def clasificar_digitos(imagen_thresh, led, boxes,maxw,maxh,porcetaje_w_digitos, porcetaje_h_digitos):
+idex = 0
+
+
+def clasificar_digitos(imagen_thresh, led, boxes, maxw, maxh, porcetaje_w_digitos, porcetaje_h_digitos):
+    global idex
     imagenes_base_dir = "Base de digitos"
     files_name = os.listdir(imagenes_base_dir)
     # inicializamos las listas
@@ -355,14 +450,15 @@ def clasificar_digitos(imagen_thresh, led, boxes,maxw,maxh,porcetaje_w_digitos, 
     # for box in boxes:
     for area in range(len(boxes)):
         votacion = []
-        idex = 0
         # para quedarnos con los box que queremos, es para no depender solamente del area del box
         if boxes.shape[0] > area:
             x, y, w, h = boxes[area]
-            if h > maxh *porcetaje_h_digitos and w > maxw * porcetaje_w_digitos:
+            if h > maxh * porcetaje_h_digitos and w > maxw * porcetaje_w_digitos:
                 # if w >= minw and (h >= minh and h <= maxh):
                 # if True:
                 roi = imagen_thresh[y:y + h, x:x + w]
+                # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 4))
+                # roi=cv2.dilate(roi,kernel)
                 # plt.imshow(roi, cmap='Greys_r')
                 # plt.show()
                 digito_MSE, digito_ssim, c = 0, 0, 0
@@ -388,33 +484,37 @@ def clasificar_digitos(imagen_thresh, led, boxes,maxw,maxh,porcetaje_w_digitos, 
                         digito_ssim = c
                         max_ssim = SSIM
                     c = c + 1
-                # analizamos los segmentos
+
                 digito_seg = analizar_segmentos(w, h, roi)
                 # el mas votado
                 votacion.append(digito_MSE)
                 votacion.append(digito_ssim)
                 votacion.append(digito_seg)
+                # votacion.append(digito_model)
                 digito = mode(votacion)
-                digitos.append((x,y,digito))
+                digitos.append((x, y, digito))
+                filename = str(digito) + str(idex) + ".jpeg"
+                path = "C:/Users/esteb/Desktop/dataset seven digits"
+                roi_rezized = cv2.resize(roi, (28, 28))
+                cv2.imwrite(os.path.join(path, filename), roi_rezized)
                 cv2.rectangle(led, (x, y), (x + w, y + h), (255, 0, 0), 2)
                 cv2.putText(led, str(digito), (x + int(w / 2), y + int(h / 2)), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
                             (0, 0, 255),
                             2)
-            else:
-                np.delete(boxes, idex)
+            #
             idex = idex + 1
 
     return digitos
 
 
-def detectar_digitos(imagen, parametros, tipo_led):
+def detectar_digitos(imagen, parametros, tipo_led, seleccion_manual):
     # parametros de los display
     (win_size_sauvola, k_sauvo, tamanio_led, thres_canny_low, thres_canny_high, h_bajo, h_alto, s_bajo,
      s_alto, v_bajo, v_alto, tam_close, delta, min_area, max_area, max_variation, corte_display_filas_i,
      corte_display_filas_f
      , corte_display_columnas_i, corte_display_columnas_f,
      thres_blanco, porcetaje_w_display,
-     porcetaje_h_display, porcetaje_w_digitos, porcetaje_h_digitos)  = parametros
+     porcetaje_h_display, porcetaje_w_digitos, porcetaje_h_digitos) = parametros
 
     # El pre proceso es redimensionar la imagen , pasarla a escala de grises y segmentar color
     imagen_resize, imagen_segmentada_led, imagen_resize_gray, mask = pre_proceso(imagen, h_bajo, h_alto, s_bajo, s_alto,
@@ -423,116 +523,167 @@ def detectar_digitos(imagen, parametros, tipo_led):
     bordes, led, led_gris = aislar_led(imagen_segmentada_led, imagen_resize_gray, imagen_resize, tamanio_led,
                                        thres_canny_low, thres_canny_high, corte_display_filas_i,
                                        corte_display_filas_f, corte_display_columnas_i, corte_display_columnas_f,
-                                       tipo_led)
+                                       tipo_led, seleccion_manual)
     # umbralizamos y dilatamos
     imagen_thresh_cerrada, imagen_thresh = umbralizar_cerrar(led_gris, win_size_sauvola, k_sauvo, thres_blanco,
-                                                             tam_close,tipo_led, h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto,led)
+                                                             tam_close, tipo_led, h_bajo, h_alto, s_bajo, s_alto,
+                                                             v_bajo, v_alto, led)
     # plt.imshow(imagen_thresh_cerrada,cmap='Greys_r')
     # plt.show()
     # usamos mser para detectar los boxes donde pueden existir numeros
     regions, boxes, maxw, maxh = mser_detector_digitos(imagen_thresh_cerrada, delta, min_area, max_area,
-                                                       max_variation, tamanio_led,porcetaje_w_display, porcetaje_h_display,led)
-    digitos = clasificar_digitos(imagen_thresh_cerrada, led, boxes,maxw,maxh,porcetaje_w_digitos, porcetaje_h_digitos)
+                                                       max_variation, tamanio_led, porcetaje_w_display,
+                                                       porcetaje_h_display, led)
+    digitos = clasificar_digitos(imagen_thresh_cerrada, led, boxes, maxw, maxh, porcetaje_w_digitos,
+                                 porcetaje_h_digitos)
 
-    return digitos, imagen_resize, led,imagen_segmentada_led,imagen_thresh_cerrada, boxes
-
-
-print("1 de la compu, 2 video/foto pregrabado")
-camara = input()
-
-if int(camara) == 1:
-    video_capture = 0
-else:
-    print("Ingrese nombre del archivo")
-    video_capture = input()
-
-# elegimos que tipo de led es
-print(
-    "Tipo led: 1 tensiometro citizen   2 tensiometro gama muñeca   3 balanza systel brumer   4 balanza pantalla led gris")
-tipo_led = input()
-parametros = definir_parametros(int(tipo_led))
-# capturamos video de la camara
-
-if video_capture == 0:
-    cap = cv2.VideoCapture(0)
-else:
-    cap = cv2.VideoCapture(str(video_capture))
-frame_count=0
-while True:
-    ret, frame = cap.read()  # ret==falso si frame==none
-    if ret == False:
-        break
-    digitos, imagen_resize, led,imagen_segmentada_led,imagen_thresh_cerrada, boxes = detectar_digitos(frame, parametros,tipo_led)
-    cv2.imshow("LED", led)
-    cv2.imshow("Imagen", imagen_resize)
-    cv2.imshow("imagen_segmentada_led", imagen_segmentada_led)
-    cv2.imshow("imagen_thresh_cerrada", imagen_thresh_cerrada)
-    # filename1 = 'led_detectado_'+ str(frame_count) +'.jpg'
-    # filename2 = 'imagen' + str(frame_count) + '.jpg'
-    # cv2.imwrite(filename1,led)
-    # cv2.imwrite(filename2, imagen_resize)
-    frame_count=frame_count+1
-    ultima_imagen = frame
-    cv2.waitKey(1)
-    k = cv2.waitKey(1) & 0xFF
-    if k == 27:
-        break
-cap.release()
-cv2.destroyAllWindows()
-
-# analizamos la ultima imagen
-start_time = time.time()
-digitos, imagen_resize, led,imagen_segmentada_led,imagen_thresh_cerrada, boxes = detectar_digitos(ultima_imagen, parametros,tipo_led)
-print("--- %s seconds ---" % (time.time() - start_time))
-
-cv2.imshow("LED", led)
-cv2.imshow("Imagen", imagen_resize)
-cv2.imshow("imagen_segmentada_led", imagen_segmentada_led)
-cv2.imshow("imagen_thresh_cerrada", imagen_thresh_cerrada)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    return digitos, imagen_resize, led, imagen_segmentada_led, imagen_thresh_cerrada, boxes
 
 
-if int(tipo_led) == 1 or int(tipo_led) == 2:
-    if len(digitos) > 3:
-        digitos = sorted(digitos, key=lambda x: x[1], reverse=True)
-        sisole=[digitos[2],digitos[3],digitos[4]]
-        sisole = sorted(sisole,key=lambda x: x[0],reverse=False)
-        sistole = str(sisole[0][2]) + str(sisole[1][2]) + str(sisole[2][2])
-        diastol = [digitos[0], digitos[1]]
-        diastol = sorted(diastol, key=lambda x: x[0], reverse=False)
-        diastole = str(diastol[0][2]) + str(diastol[1][2])
-        quedice = "La sistole es " + sistole + " y la diastole es " + diastole
-        saySomething(quedice)
+def guardar_datos():
+    global quedice_list
+    df = pd.DataFrame(data=quedice_list)
+    df.to_excel("datos_guardados.xlsx")
+
+
+seleccion_manual = "n"
+
+
+def selec_manual():
+    global seleccion_manual
+    if var.get() == 1:
+        seleccion_manual = "y"
     else:
-        digitos = sorted(digitos, key=lambda x: x[0], reverse=False)
-        quedice = ""
-        for i in range(len(digitos)):
-            quedice = str(quedice) + str(digitos[i][2])
-        saySomething(quedice)
-if int(tipo_led) == 3:  # balanza verde
-    digitos = sorted(digitos, key=lambda x: x[0], reverse=False)
-    quedice = ""
-    for i in range(len(digitos)):
-        quedice = str(quedice) + str(digitos[i][2])
-    if len(digitos)<5:
-        quedice2 = "El peso es " + quedice[0]+ "coma" +quedice[1:]+ " kilogramos"
+        seleccion_manual = "n"
+
+
+def hablar():
+    dictado_voz(tipo_led, digitos, True)
+
+
+parametros = definir_parametros(0)
+tipo_led = 0
+
+
+def def_param():
+    global parametros, tipo_led
+    if value_inside.get() == "tensiometro citizen":
+        tipo_led = 1
+    if value_inside.get() == "tensiometro gama muñeca":
+        tipo_led = 2
+    if value_inside.get() == "balanza systel retoiluminada":
+        tipo_led = 3
+    if value_inside.get() == "balanza led gris":
+        tipo_led = 4
+    if value_inside.get() == "fuente led azul":
+        tipo_led = 5
+    if value_inside.get() == "multímetro led rojo":
+        tipo_led = 6
+    parametros = definir_parametros(tipo_led)
+
+
+def elegir_visualizar_video():
+    global cap, ix1, iy1, ix2, iy2, led_seleccionado, quedice_list, actual_frame
+    quedice_list = []
+    ix1, iy1, ix2, iy2 = -1, -1, -1, -1
+    led_seleccionado = False
+    actual_frame = 0
+    if cap is not None:
+        lblVideo.image = ""
+        cap.release()
+        cap = None
+    filety = [('all files', '.*'),
+              ("all video format", ".mp4"),
+              ("all video format", ".avi"),
+              ('text files', '.txt'),
+              ('image files', '.png'),
+              ('image files', '.jpg'),
+              ]
+    video_path = filedialog.askopenfilename(filetypes=filety)
+    if len(video_path) > 0:
+        lblInfoVideoPath.configure(text=video_path)
+        cap = cv2.VideoCapture(video_path)
+        visualizar()
     else:
-        quedice2 = "El peso es " + quedice[0] + quedice[1] + "coma" +quedice[2:]+ " kilogramos"
-    saySomething(quedice2)
-    print(quedice2)
+        lblInfoVideoPath.configure(text="Aún no se ha seleccionado un video")
+        # lblInfoVideoPath.configure(text=video_path)
+        # cap = cv2.VideoCapture(0)
+        # visualizar()
 
-if int(tipo_led) == 4:  # balanza gris
-    digitos = sorted(digitos, key=lambda x: x[0], reverse=False)
-    digitos_dictar = ""
-    for i in range(len(digitos)):
-        digitos_dictar = str(digitos_dictar) + str(digitos[i][2])
-    quedice = "El peso es " + digitos_dictar + " gramos"
-    saySomething(quedice)
 
-print(quedice)
+quedice_list = []
 
-cv2.imshow("LED", led)
-cv2.imshow("Imagen", imagen_resize)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+
+def visualizar():
+    global cap, frame, digitos, quedice, quedice_list, length_frame, actual_frame
+    if parametros == definir_parametros(0):
+        MessageBox.showwarning("Alerta", "Seleccione un tipo de LED.")
+    else:
+        if cap is not None:
+            ret, frame = cap.read()
+            length_frame = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if ret == True:
+                digitos, imagen_resize, led, imagen_segmentada_led, imagen_thresh_cerrada, boxes = detectar_digitos(
+                    frame,
+                    parametros,
+                    tipo_led,
+                    seleccion_manual)
+                actual_frame = actual_frame + 1
+
+                led = cv2.cvtColor(led, cv2.COLOR_BGR2RGB)
+                quedice = dictado_voz(tipo_led, digitos, False)
+                im = Image.fromarray(led)
+                img = ImageTk.PhotoImage(image=im)
+                lblVideo.configure(image=img)
+                lblVideo.image = img
+                lblVideo.after(10, visualizar)
+                progressbar["value"] = actual_frame
+                progressbar["maximum"] = length_frame
+                quedice = dictado_voz(tipo_led, digitos, False)
+                quedice_list.append(quedice)
+
+
+cap = None
+root = Tk()
+btnVisualizar = Button(root, text="Elegir archivo", command=elegir_visualizar_video)
+btnVisualizar.grid(column=0, row=0, padx=5, pady=5, columnspan=2)
+lblInfo1 = Label(root, text="Video de entrada:")
+lblInfo1.grid(column=0, row=1)
+lblInfoVideoPath = Label(root, text="Aún no se ha seleccionado un video")
+lblInfoVideoPath.grid(column=1, row=1)
+lblVideo = Label(root)
+lblVideo.grid(column=0, row=2, columnspan=2)
+# Create the list of options
+options_list = ["tensiometro citizen", "tensiometro gama muñeca", "balanza systel retoiluminada", "balanza led "
+                                                                                                  "gris",
+                "fuente led azul", "multímetro led rojo"]
+
+# Variable to keep track of the option
+# selected in OptionMenu
+value_inside = tkinter.StringVar(root)
+
+# Set the default value of the variable
+value_inside.set("Selecciona un tipo de led")
+
+# Create the optionmenu widget and passing
+# the options_list and value_inside to it.
+question_menu = tkinter.OptionMenu(root, value_inside, *options_list)
+question_menu.grid()
+
+submit_button = tkinter.Button(root, text='Definir parametros', command=def_param)
+submit_button.grid()
+
+var = IntVar()
+chk = Checkbutton(root, text='Seleccion manual', variable=var, command=selec_manual)
+chk.grid()
+
+submit_button = tkinter.Button(root, text='Dictar', command=hablar)
+submit_button.grid(row=3, column=2)
+
+submit_button = tkinter.Button(root, text='Guardar datos ', command=guardar_datos)
+submit_button.grid(row=3, column=1)
+
+progressbar = Progressbar(root, orient="horizontal", length=200, mode="determinate")
+progressbar.grid(row=4, column=1)
+
+root.mainloop()
