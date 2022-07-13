@@ -682,4 +682,12 @@ submit_button.grid(row=3, column=1)
 progressbar = Progressbar(root, orient="horizontal", length=200, mode="determinate")
 progressbar.grid(row=4, column=1)
 
+nombre = StringVar()
+label = Label( root, textvariable=nombre, relief=RAISED )
+
+label.configure(foreground="blue")
+
+nombre.set("By: Esteban O")
+label.grid(row=5, column=1)
+
 root.mainloop()
