@@ -10,13 +10,14 @@ from imutils.perspective import four_point_transform
 import imutils
 from skimage import filters, metrics
 from matplotlib import pyplot as plt
-# from keras.models import load_model
 from tkinter import messagebox as MessageBox
 from tkinter import *
 from tkinter import filedialog
 from PIL import Image
 from PIL import ImageTk
 import cv2
+from numpy import argmax
+import statistics
 
 ix1, iy1, ix2, iy2 = -1, -1, -1, -1
 led_seleccionado = False
@@ -201,7 +202,7 @@ def definir_parametros(tipo_display):
         thres_canny_low, thres_canny_high = 50, 255
         h_bajo, h_alto, s_bajo, s_alto, v_bajo, v_alto = 90, 115, 40, 255, 170, 255
         tam_close = 5
-        delta, min_area, max_area, max_variation = 5, 2000, 8000, 0.25
+        delta, min_area, max_area, max_variation = 5, 1000, 8000, 0.25
         corte_display_filas_i = 5
         corte_display_columnas_i = 5
         corte_display_filas_f = -1
@@ -407,7 +408,7 @@ def analizar_segmentos(w, h, roi):
         (1, 1, 1, 1, 0, 1, 1): 9
     }
     # print(w / h)
-    if w / h > 0.3:
+    if w / h > 0.5:
         (dW, dH) = (int(w * 0.25), int(h * 0.15))
         dHC = int(h * 0.05)
         # definimos los 7 segmentos
@@ -438,7 +439,6 @@ def analizar_segmentos(w, h, roi):
 
 
 idex = 0
-
 
 def clasificar_digitos(imagen_thresh, led, boxes, maxw, maxh, porcetaje_w_digitos, porcetaje_h_digitos):
     global idex
@@ -490,13 +490,9 @@ def clasificar_digitos(imagen_thresh, led, boxes, maxw, maxh, porcetaje_w_digito
                 votacion.append(digito_MSE)
                 votacion.append(digito_ssim)
                 votacion.append(digito_seg)
-                # votacion.append(digito_model)
+                # digito = statistics.multimode(votacion)
                 digito = mode(votacion)
                 digitos.append((x, y, digito))
-                filename = str(digito) + str(idex) + ".jpeg"
-                path = "C:/Users/esteb/Desktop/dataset seven digits"
-                roi_rezized = cv2.resize(roi, (28, 28))
-                cv2.imwrite(os.path.join(path, filename), roi_rezized)
                 cv2.rectangle(led, (x, y), (x + w, y + h), (255, 0, 0), 2)
                 cv2.putText(led, str(digito), (x + int(w / 2), y + int(h / 2)), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
                             (0, 0, 255),
