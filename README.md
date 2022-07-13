@@ -5,7 +5,7 @@
 
 Este es el proyecto final que realice junto con otros colaboradores para la materia procesamiento digital de imágenes en UNL-FICH. Consta de un algoritmo que detecta y clasifica dígitos de displays de siete segmentos, además desarrollamos una pequeña interfaz gráfica.  
 
-## Descargar el programa haciendo click [aqui](https://1drv.ms/u/s!Ak1hSkZeE5KjhJQU8Eczokgja0xyhw?e=c4W8Sg):
+## Podes descargar el programa desde [onedrive](https://1drv.ms/u/s!Ak1hSkZeE5KjhJQU8Eczokgja0xyhw?e=c4W8Sg)
 
 ## [Link](https://www.youtube.com/watch?v=xHUZnY-XSNI) a video de Youtube donde muestro al programa
 
