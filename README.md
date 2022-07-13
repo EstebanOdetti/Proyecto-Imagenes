@@ -4,7 +4,10 @@
 
 
 Este es el proyecto final que realice junto con otros colaboradores para la materia procesamiento digital de imágenes en UNL-FICH. Consta de un algoritmo que detecta y clasifica dígitos de displays de siete segmentos, además desarrollamos una pequeña interfaz gráfica.  
-Podes descargar el programa haciendo click [aqui](https://1drv.ms/u/s!Ak1hSkZeE5KjhJQU8Eczokgja0xyhw?e=c4W8Sg):
+
+## Descargar el programa haciendo click [aqui](https://1drv.ms/u/s!Ak1hSkZeE5KjhJQU8Eczokgja0xyhw?e=c4W8Sg):
+
+## [Link](https://www.youtube.com/watch?v=xHUZnY-XSNI) a video de Youtube donde muestro al programa
 
 ## Resumen 
 En la vida cotidiana nos encontramos frente a una gran cantidad de dispositivos digitales con pantallas de siete segmentos, pero no todos poseen la capacidad de transferir o exportar la información de diversas maneras para que personas con discapacidades visuales puedan acceder a la misma; es por eso que se implementó un algoritmo semiautomático para lectura de estos dígitos, a través de una imagen. Los resultados fueron satisfactorios logrando una precisión del 83% en promedio bajo condiciones de luz deseables. Proyectos anteriores a este dieron resultados con alta precisión, pero son solo para un tipo de dispositivo, por lo que se centró en otorgar generalidad de detección.
@@ -30,3 +33,5 @@ Está conformado por una serie de imágenes y videos capturados por los autores 
 ## Algunos resultados
 ![Alt Text](https://media1.giphy.com/media/rW9fiW0QxPlvoPtoNV/giphy.gif?cid=790b7611d8f8c7a5864decff16d9bbe089e6f9dbf40cd123&rid=giphy.gif&ct=g) 
 ![Alt Text](https://media4.giphy.com/media/kQXr38abpdjLky6loA/giphy.gif?cid=790b7611917c04995b4482c5a8fe75b3138a45cd985476cb&rid=giphy.gif&ct=g) 
+
+
