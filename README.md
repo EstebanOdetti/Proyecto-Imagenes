@@ -3,7 +3,7 @@
 ![Generic badge](https://img.shields.io/badge/made%20with-Python-blue.svg) 
 
 
-Este es el proyecto final que realice junto con otros colaboradores para la materia procesamiento digital de imágenes en UNL-FICH para la [Asociación Santafesina Nueva Cultura](https://nuevaculturasf.org.ar/#!/-inicio/). Consta de un algoritmo que detecta y clasifica dígitos de displays de siete segmentos, además desarrollamos una pequeña interfaz gráfica solo para computadoras de escritorio con windows 10.
+Este es el proyecto final que realice junto con otros colaboradores para la materia procesamiento digital de imágenes en UNL-FICH. Consta de un algoritmo que detecta y clasifica dígitos de displays de siete segmentos, además desarrollamos una pequeña interfaz gráfica solo para computadoras de escritorio con windows 10.
 
 ## Podes descargar el programa desde [onedrive](https://1drv.ms/u/s!Ak1hSkZeE5KjhJQU8Eczokgja0xyhw?e=c4W8Sg)
 
