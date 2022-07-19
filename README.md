@@ -1,4 +1,4 @@
-# Algoritmo de detección y lectura de dígitos de siete segmentos: DigiDetect
+# Algoritmo de detección y lectura de dígitos de siete segmentos
 
 ![Generic badge](https://img.shields.io/badge/made%20with-Python-blue.svg) 
 
